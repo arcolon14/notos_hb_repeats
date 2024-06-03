@@ -17,8 +17,10 @@ def parse_args():
                    help='(str) Path to the divergence summary (*.divsum) table from Repeat Masker.')
     p.add_argument('-o', '--outdir', required=False, default='.',
                    help='(str) Path to output directory.')
-    p.add_argument('-m', '--min-length', required=False, default=10, type=int,
-                   help='(int) Minimum length of well characterized bases (wellCharLen) needed to keep a sequence  [default=10]')
+    p.add_argument('-b', '--basename', required=False, default=f'RepeatMasker_{DATE}',
+                   help='(str) Basename for the output files  [default=RepeatMasker_YYYYMMDD]')
+    p.add_argument('-m', '--min-length', required=False, default=None,
+                   help='(int) Minimum length of well characterized bases (wellCharLen) needed to keep a sequence  [default=None]')
     # Check input arguments
     args = p.parse_args()
     args.outdir = args.outdir.rstrip('/')
@@ -28,6 +30,16 @@ def parse_args():
         sys.exit(f"Error: '{args.cross_match}' not found.")
     if not os.path.exists(args.divsum):
         sys.exit(f"Error: '{args.divsum}' not found.")
+    if args.min_length is not None:
+        # If not None, a numeric value must be provided
+        min_len = str(args.min_length)
+        if min_len.isnumeric():
+            args.min_length = int(min_len)
+        else:
+            sys.exit(f'"Error: min len ({min_len}) must be numeric.')
+    else:
+        # If set to default None, set to a very small negative number
+        args.min_length = -1_000_000_000
     return args
 
 def now():
@@ -44,22 +56,23 @@ class RepeatDivsum:
         self.wchar_len = well_char_len
         self.kimura    = kimura/100
     def __str__(self):
-        return f'{self.r_class} {self.r_familyq} {self.r_id} {self.abs_len} {self.wchar_len} {self.kimura:0.06g}'
+        return f'{self.r_class} {self.r_family} {self.r_id} {self.abs_len} {self.wchar_len} {self.kimura:0.06g}'
 
 class RepeatAnnot:
     '''Annotation metadata for a given repeat.'''
-    def __init__(self, rep_name, rep_class, chromosome, start, end, sw_score):
+    def __init__(self, rep_name, rep_class, chromosome, start, end, strand, sw_score):
         self.name     = rep_name
         self.r_class  = rep_class.split('/')[0]
         self.r_family = rep_class
         self.chrom    = chromosome
         self.start    = start
         self.end      = end
+        self.strand   = strand
         self.score    = sw_score
     def __str__(self):
         return f'{self.name} {self.r_class} {self.r_family} {self.chrom} {self.start} {self.end} {self.score}'
 
-def parse_divsum_table(divsum_f, min_len=10):
+def parse_divsum_table(divsum_f, min_len=0):
     '''Parse the divergence summary table.'''
     fh = open(divsum_f, 'r')
     if divsum_f.endswith('.gz'):
@@ -106,7 +119,7 @@ def parse_crossmatch_table(crossmatch_f):
     if crossmatch_f.endswith('.gz'):
         fh = gzip.open(crossmatch_f, 'rt')
     print('Parsing cross match table...')
-    cross_match = dict()
+    cross_match = list()
     records = 0
     kept = 0
     # Parse file
@@ -121,53 +134,70 @@ def parse_crossmatch_table(crossmatch_f):
         fields = line.split()
         if not fields[0].isnumeric():
             continue
-        if len(fields) not in range(14,16):
-            continue
-        # Now, process the record lines
-        records += 1
-        sw_score = int(fields[0])
-        chromosome = fields[4]
-        start_bp = int(fields[5])
-        end_bp = int(fields[6])
-        re_name = fields[9]
-        re_class = fields[10]
-        annotation = RepeatAnnot(re_name, re_class, chromosome, start_bp, end_bp, sw_score)
-        # Filter some of the unwanted classes
-        if annotation.r_class in ('Simple_repeat', 'Low_complexity', 'Satellite'):
-            continue
+        # Process the record line if possible
+        try:
+            # Now, process the record lines
+            records += 1
+            sw_score   = int(fields[0])
+            chromosome = fields[4]
+            start_bp   = int(fields[5])
+            end_bp     = int(fields[6])
+            re_name    = fields[9]
+            re_class   = fields[10]
+            strand     = fields[8]
+            if strand == 'C':
+                strand = '-'
+        except IndexError:
+            print(f"Error: line {i} of {crossmatch_f} is not following the standard format:\n\n{line}")
+        annotation = RepeatAnnot(re_name, re_class, chromosome, start_bp, end_bp, strand, sw_score)
         # Add to the annotation dict
         kept += 1
-        cross_match.setdefault(annotation.name, [])
-        cross_match[annotation.name].append(annotation)
+        cross_match.append(annotation)
     print(f'    Read {records:,} records from the cross_match table file.\n    Retained {kept:,} records.')
     return cross_match
 
-def merge_cross_divsum(cross_match, divsum, outdir='.'):
+def merge_cross_divsum(cross_match, divsum, outdir='.', basename=f'RepeatMasker_{DATE}'):
     '''Merge the cross_match and divsum datasets into a final output.'''
     print('\nMatching cross_match and divsum records...')
-    fh = open(f'{outdir}/repeat_masked_merged.tsv', 'w')
-    header = ['#Name', 'Class', 'Family', 'Chromosome', 'StartBP', 'EndBP', 'WellCharLen', 'Kimura','SwScore']
+    fh = open(f'{outdir}/{basename}.repeat_masked_merged.tsv', 'w')
+    header = ['#Chromosome', 'StartBP', 'EndBP', 'Strand', 'Name', 'Class', 'Family', 'WellCharLen', 'Kimura','SwScore']
     header = '\t'.join(header)
     fh.write(f'{header}\n')
     matches = 0
     # Process each cross_match annotation
-    for name in cross_match:
-        name_matches = cross_match[name]
-        for annotation in name_matches:
-            assert isinstance(annotation, RepeatAnnot)
-            # Find the divsum for the annotation
-            divergence = divsum.get(annotation.name, None)
-            if divergence is None:
-                continue
+    for annotation in sorted(cross_match, key=lambda a: a.start):
+        assert isinstance(annotation, RepeatAnnot)
+        wchar_len = None
+        kimura = None
+        # Find the divsum for the annotation, if available
+        divergence = divsum.get(annotation.name, None)
+        if divergence is not None:
             assert isinstance(divergence, RepeatDivsum)
             # Make sure the class and family match exactly
-            if (annotation.r_class != divergence.r_class) or (annotation.r_family != divergence.r_family):
-                continue
-            # Process only fully matching records
-            matches += 1
-            row = f'{annotation.name}\t{annotation.r_class}\t{annotation.r_family}\t{annotation.chrom}\t{annotation.start}\t{annotation.end}\t{divergence.wchar_len}\t{divergence.kimura:0.6g}\t{annotation.score:0.6g}\n'
-            fh.write(row)
+            assert annotation.r_class == divergence.r_class
+            assert annotation.r_family == divergence.r_family
+            # Add the given values
+            wchar_len = divergence.wchar_len
+            kimura = f'{divergence.kimura:0.6g}'
+        # Process only fully matching records
+        matches += 1
+        ['#Chromosome', 'StartBP', 'EndBP', 'Strand', 'Name', 'Class', 'Family', 'WellCharLen', 'Kimura','SwScore']
+        row = f'{annotation.chrom}\t{annotation.start}\t{annotation.end}\t{annotation.strand}\t{annotation.name}\t{annotation.r_class}\t{annotation.r_family}\t{wchar_len}\t{kimura}\t{annotation.score:0.6g}\n'
+        fh.write(row)
     print(f'    Exported a total of {matches:,} matching records.')
+    fh.close()
+
+def clean_divsum_file(divsum, outdir, basename):
+    '''Print a cleaner DIVSUM output file.'''
+    print('\nPrinting clean divum file...')
+    fh = open(f'{outdir}/{basename}.divsum.tsv', 'w')
+    header = 'Class\tRepeat\tabsLen\twellCharLen\tKimura\n'
+    fh.write(header)
+    for element in sorted(divsum):
+        div = divsum[element]
+        assert isinstance(div, RepeatDivsum)
+        row = f'{div.r_family}\t{div.r_id}\t{div.abs_len}\t{div.wchar_len}\t{div.kimura:0.08g}\n'
+        fh.write(row)
     fh.close()
 
 def main():
@@ -178,7 +208,9 @@ def main():
     # Parse divsum table
     divsum = parse_divsum_table(args.divsum, args.min_length)
     # Join cross_match and divsum
-    merge_cross_divsum(cross_match, divsum, args.outdir)
+    merge_cross_divsum(cross_match, divsum, args.outdir, args.basename)
+    # Print clean divsum
+    clean_divsum_file(divsum, args.outdir, args.basename)
     # Finish
     print(f'\n{PROG} finished on {now()}')
 
