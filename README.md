@@ -46,17 +46,16 @@ optional arguments:
 The output is `repeat_masked_merged.tsv`.
 
 ```sh
-#Name              Class  Family          Chromosome  StartBP   EndBP     WellCharLen  Kimura  SwScore
-DR0015272          DNA    DNA/hAT-Tip100  2           21376111  21376206  2871         0.2092  428
-DR0103000          LINE   LINE/Penelope   5           11192568  11192678  1362         0.2191  287
-rnd-6_family-6844  LINE   LINE/L1         6           17114676  17114930  20683        0.0678  1836
-rnd-1_family-857   DNA    DNA/hAT-Ac      11          477380    477612    52874        0.0226  1827
-DR0081550          DNA    DNA/hAT-Ac      13          13640239  13640312  29984        0.0661  586
-DR0081469          LINE   LINE/L2         16          32010056  32010142  176647       0.2081  328
-rnd-1_family-249   LINE   LINE/RTE-BovB   16          9067434   9068658   1842036      0.0158  10179
-DR0140129          SINE   SINE/MIR        20          13676319  13676332  5105         0.2455  262
-rnd-1_family-656   DNA    DNA/TcMar-Tc2   23          44569505  44569794  572460       0.031   1942
-DR0181611          DNA    DNA/TcMar-Tc1   24          13315996  13316193  89004        0.0283  1629
+#Chromosome  StartBP  EndBP  Strand  Name              Class          Family          WellCharLen  Kimura  SwScore
+Chr1         198      233    -       DR0113934         LTR            LTR/DIRS        36           0.1587  227
+Chr1         787      1254   -       DR0082056         DNA            DNA/hAT-Tip100  449          0.1055  2701
+Chr1         1252     4453   +       rnd-6_family-740  LINE           LINE/L1-Tx1     3182         0.0314  26037
+Chr1         4412     4488   -       DR0152715         Unknown        Unknown         34           0.1485  229
+Chr1         4499     4654   +       DR0081825         Unknown        Unknown         149          0.1097  2829
+Chr1         4655     5423   -       DR0081478         DNA            DNA/hAT-Tip100  759          0.0285  6047
+Chr1         6017     6043   +       (ATTT)n           Simple_repeat  Simple_repeat   None         None    28
+Chr1         6765     6856   -       DR0115825         DNA            DNA/hAT-Ac      87           0.2788  241
+Chr1         7000     7126   +       DR0081603         DNA            DNA/hAT-hAT5    82           0.0505  613
 ```
 
 ## Plot repeat landscape
