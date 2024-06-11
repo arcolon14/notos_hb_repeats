@@ -12,7 +12,7 @@ It takes the FASTA for the target genome and the FASTA for the repeat annotation
 
 Process the `RepeatMasker` output to generate the DIVSUM file needed for the repeat landscape plots. First, calculate the Kimura distance using the `RepeatMasker` alignments (`*.align`) using the `RepeatMaker` utility script `calcDivergenceFromAlign.pl`. This generates a based DIVSUM file, which is processed and tabulated to generate clearner, more descriptive outputs (see `parse_repeat_masker_out.py`).
 
-## Parse the Repeat Masker output
+## Clean the Repeat Masker output
 
 Custom script used for processing and cleaning the `RepeatMasker` outputs. Takes the cross match file (`*.out`) from `RepeatMasker` along with the DIVSUM table from the utility scripts and generates a single table with the repeat annotation coordinates and the Kimura distance, all in a single file.
 
@@ -56,6 +56,29 @@ Chr1         4655     5423   -       DR0081478         DNA            DNA/hAT-Ti
 Chr1         6017     6043   +       (ATTT)n           Simple_repeat  Simple_repeat   None         None    28
 Chr1         6765     6856   -       DR0115825         DNA            DNA/hAT-Ac      87           0.2788  241
 Chr1         7000     7126   +       DR0081603         DNA            DNA/hAT-hAT5    82           0.0505  613
+```
+
+## Tabulate the repeat proportions
+
+Parse the `RepeatMasker` output table (`*.tbl`) and generate a clean tabular export.
+
+### Usage
+
+```sh
+usage: extract_repmap_props.py [-h] -t RM_TABLE [-o OUTDIR] [-b BASENAME]
+
+Extract repeat proportions from the RepeatMasker output table.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -t RM_TABLE, --rm-table RM_TABLE
+                        (str) Path to the table (*.tbl) output from Repeat
+                        Masker.
+  -o OUTDIR, --outdir OUTDIR
+                        (str) Path to output directory.
+  -b BASENAME, --basename BASENAME
+                        (str) Basename for the output files
+                        [default=RepeatMasker_YYYYMMDD]
 ```
 
 ## Plot repeat landscape
