@@ -8,25 +8,30 @@
 library(ggplot2)
 library(dplyr)
 
-# Set working dir
-setwd('/path/to/working/dir')
+# Set working directory 
+setwd("~/path/to/working/directory")
 
-# Load the data containing all species and genomes
-targets_f <- './target_seqs.txt'
+# Load the data containing all species and clusters
+targets_f <- './cluster_sizes.txt'
 target_seqs <- read.delim(targets_f)
 
+# For troubleshooting purposes
+# target_seqs <- target_seqs %>%
+#   filter(hb == 'MN') %>%
+#   filter(spp == 'treBer')
+
 # Default vars
-min.length <- 50
+min.length <- 10
 
 # Loop over the targets
 for (i in 1:nrow(target_seqs)){
   row <- target_seqs[i,]
-  # The target species
-  spp <- row$spp
+  # The target species-cluster pair
+  spp <- paste(row$spp, '_', row$hb, sep='')
   # length of the sequence
   assm.len <- row$bp
   # Report
-  message(paste('Working on', spp))
+  message(paste('Working on', spp, '...'))
   
   # Directory variables
   work.dir <- paste('./species_database/', spp, sep='')
@@ -70,6 +75,8 @@ for (i in 1:nrow(target_seqs)){
     select(Class, wellCharLen, Kimura) %>%
     # Remove repeated rows
     distinct() %>%
+    # Convert Kimura to percentages
+    mutate(Kimura = Kimura*100) %>%
     # Create bins of the Kimura percentages, bins=1
     mutate(Kimura.bin = cut(Kimura, breaks=seq(-1,max(Kimura)+1,1),
                             labels=FALSE)) %>%
@@ -93,10 +100,10 @@ for (i in 1:nrow(target_seqs)){
                                       fill=Class, color=Class)) +
     geom_bar(position="stack", stat="identity", alpha=0.9, linewidth=0.1) +
     xlim(0,50) +
-    scale_y_continuous(limits=c(0,12), breaks=seq(0,12,2)) +
+    scale_y_continuous(limits=c(0,50), breaks=seq(0,50,10)) +
     scale_fill_brewer(palette='Dark2', drop=FALSE) +
     scale_color_brewer(palette='Dark2', drop=FALSE) +
-    labs(title=spp, x='Kimura Divergence %', y='Genome Coverage %') + 
+    labs(title=spp, x='Kimura Divergence %', y='Locus Coverage %') + 
     theme_bw() +
     theme(plot.title = element_text(hjust = 0.5))
   print(fig)
