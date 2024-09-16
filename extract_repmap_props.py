@@ -57,7 +57,7 @@ def parse_rm_table(rm_table, sequence_id):
     '''Parse the repeat masker output table.'''
     rep_props = RepProp(sequence_id)
     # Open the table file
-    with open(rm_table) as fh:
+    with gzip.open(rm_table, 'rt') if rm_table.endswith('.gz') else open(rm_table) as fh:
         for line in fh:
             line = line.strip('\n')
             # Skip empty line and table borders
