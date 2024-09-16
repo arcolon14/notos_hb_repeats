@@ -14,48 +14,70 @@ Process the `RepeatMasker` output to generate the DIVSUM file needed for the rep
 
 ## Clean the Repeat Masker output
 
-Custom script used for processing and cleaning the `RepeatMasker` outputs. Takes the cross match file (`*.out`) from `RepeatMasker` along with the DIVSUM table from the utility scripts and generates a single table with the repeat annotation coordinates and the Kimura distance, all in a single file.
+Custom script used for processing and cleaning the `RepeatMasker` outputs. Takes the cross match file (`*.out`) from `RepeatMasker` along with the DIVSUM table from the utility scripts and generates a single table with the repeat annotation coordinates and the Kimura distance, all in a single file. It also generates a "cleaner" and tabulated DIVSUM table, which can be used for other application (e.g., plotting repeat landscapes in R).
 
 ### Usage
 
 ```sh
-parse_repeat_masker_out.py started on 2024-04-16 15:07:27
-
-usage: parse_repeat_masker_out.py [-h] -c CROSS_MATCH -d DIVSUM [-o OUTDIR]
-                                  [-m MIN_LENGTH]
-
-Parse and merge the output from RepeatMasker.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -c CROSS_MATCH, --cross-match CROSS_MATCH
-                        (str) Path to the cross match (*.out) table from
-                        Repeat Masker.
-  -d DIVSUM, --divsum DIVSUM
-                        (str) Path to the divergence summary (*.divsum) table
-                        from Repeat Masker.
-  -o OUTDIR, --outdir OUTDIR
-                        (str) Path to output directory.
-  -m MIN_LENGTH, --min-length MIN_LENGTH
-                        (int) Minimum length of well characterized bases
-                        (wellCharLen) needed to keep a sequence [default=10]
+$ python3 parse_repeat_masker_out.py -h
+  parse_repeat_masker_out.py started on 2024-09-16 13:14:15
+  
+  usage: parse_repeat_masker_out.py [-h] -c CROSS_MATCH -d DIVSUM [-o OUTDIR]
+                                    [-b BASENAME] [-m MIN_LENGTH]
+  
+  Parse and merge the output from RepeatMasker.
+  
+  optional arguments:
+    -h, --help            show this help message and exit
+    -c CROSS_MATCH, --cross-match CROSS_MATCH
+                          (str) Path to the cross match (*.out) table from
+                          Repeat Masker.
+    -d DIVSUM, --divsum DIVSUM
+                          (str) Path to the divergence summary (*.divsum) table
+                          from Repeat Masker.
+    -o OUTDIR, --outdir OUTDIR
+                          (str) Path to output directory.
+    -b BASENAME, --basename BASENAME
+                          (str) Basename for the output files
+                          [default=RepeatMasker_YYYYMMDD]
+    -m MIN_LENGTH, --min-length MIN_LENGTH
+                          (int) Minimum length of well characterized bases
+                          (wellCharLen) needed to keep a sequence [default=None]
 ```
 
-### Output table
+### Output tables
 
-The output is `repeat_masked_merged.tsv`.
+The first output is `BASENAME.repeat_masked_merged.tsv`, which described the merged file from the DIVSUM and output tables. For each element, it describes its coordinates, family, class, alignment lenghts, and divergence.
 
 ```sh
 #Chromosome  StartBP  EndBP  Strand  Name              Class          Family          WellCharLen  Kimura  SwScore
-Chr1         198      233    -       DR0113934         LTR            LTR/DIRS        36           0.1587  227
-Chr1         787      1254   -       DR0082056         DNA            DNA/hAT-Tip100  449          0.1055  2701
-Chr1         1252     4453   +       rnd-6_family-740  LINE           LINE/L1-Tx1     3182         0.0314  26037
-Chr1         4412     4488   -       DR0152715         Unknown        Unknown         34           0.1485  229
-Chr1         4499     4654   +       DR0081825         Unknown        Unknown         149          0.1097  2829
-Chr1         4655     5423   -       DR0081478         DNA            DNA/hAT-Tip100  759          0.0285  6047
-Chr1         6017     6043   +       (ATTT)n           Simple_repeat  Simple_repeat   None         None    28
-Chr1         6765     6856   -       DR0115825         DNA            DNA/hAT-Ac      87           0.2788  241
-Chr1         7000     7126   +       DR0081603         DNA            DNA/hAT-hAT5    82           0.0505  613
+16           310      821    +       rnd-1_family-896  DNA            DNA             497          0.0922  3297
+16           834      1905   -       DR0080867         DNA            DNA/Kolobok-T2  1040         0.0547  7295
+16           1957     2194   -       rnd-1_family-773  DNA            DNA/P           786          0.0148  6389
+16           2195     2245   +       (AC)n             Simple_repeat  Simple_repeat   None         None    60
+16           2246     2793   -       rnd-1_family-773  DNA            DNA/P           786          0.0148  6389
+16           2786     2798   -       DR0097018         LINE           LINE/L2         -60          1       253
+16           2794     2862   +       DR0081760         LINE           LINE/L2         67           0.0609  1380
+16           2799     2811   -       DR0219915         DNA            DNA             None         None    264
+16           2812     2912   +       rnd-1_family-722  DNA            DNA/P           778          0.0243  737
+```
+
+The second out out table `BASENAME.divsum.tsv` is the cleaned and tabulated DIVSUM file.
+
+```sh
+Class              Repeat     absLen  wellCharLen  Kimura
+DNA/hAT-Tip100     DR0015542  108     103          0.1605
+DNA/P              DR0019447  53      42           0.1154
+DNA/Kolobok-T2     DR0080867  1072    1040         0.0547
+DNA/hAT-Charlie    DR0080892  301     293          0.0689
+DNA/hAT-Tip100     DR0081042  1516    1508         0.0294
+LINE/L2            DR0081282  74      73           0.0648
+Unknown            DR0081451  692     667          0.0267
+DNA/PIF-Harbinger  DR0081475  600     570          0.1149
+DNA/P              DR0081689  74      74           0.1535
+LINE/L2            DR0081760  69      67           0.0609
+DNA/hAT-hAT5       DR0081787  108     78           0.14
+DNA/Kolobok-T2     DR0081800  681     673          0.0612
 ```
 
 ## Tabulate the repeat proportions
@@ -65,20 +87,21 @@ Parse the `RepeatMasker` output table (`*.tbl`) and generate a clean tabular exp
 ### Usage
 
 ```sh
-usage: extract_repmap_props.py [-h] -t RM_TABLE [-o OUTDIR] [-b BASENAME]
-
-Extract repeat proportions from the RepeatMasker output table.
-
-optional arguments:
-  -h, --help            show this help message and exit
-  -t RM_TABLE, --rm-table RM_TABLE
-                        (str) Path to the table (*.tbl) output from Repeat
-                        Masker.
-  -o OUTDIR, --outdir OUTDIR
-                        (str) Path to output directory.
-  -b BASENAME, --basename BASENAME
-                        (str) Basename for the output files
-                        [default=RepeatMasker_YYYYMMDD]
+$ python3 extract_repmap_props.py -h
+  extract_repmap_props.py started on 2024-09-16 11:23:30
+  
+  usage: extract_repmap_props.py [-h] -t RM_TABLE [-o OUTDIR] [-b BASENAME]
+  
+  Extract repeat proportions from the RepeatMasker output table.
+  
+  options:
+    -h, --help            show this help message and exit
+    -t RM_TABLE, --rm-table RM_TABLE
+                          (str) Path to the table (*.tbl) output from Repeat Masker.
+    -o OUTDIR, --outdir OUTDIR
+                          (str) Path to output directory.
+    -b BASENAME, --basename BASENAME
+                          (str) Basename for the output files [default=RepeatMasker_YYYYMMDD]
 ```
 
 ## Plot repeat landscape

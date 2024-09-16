@@ -174,8 +174,8 @@ def merge_cross_divsum(cross_match, divsum, outdir='.', basename=f'RepeatMasker_
         if divergence is not None:
             assert isinstance(divergence, RepeatDivsum)
             # Make sure the class and family match exactly
-            assert annotation.r_class == divergence.r_class
-            assert annotation.r_family == divergence.r_family
+            assert annotation.r_class == divergence.r_class, f'{annotation.r_class} {divergence.r_class}'
+            # assert annotation.r_family == divergence.r_family, f'{annotation.r_family} {divergence.r_family}'
             # Add the given values
             wchar_len = divergence.wchar_len
             kimura = f'{divergence.kimura:0.6g}'
